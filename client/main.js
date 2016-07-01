@@ -58,10 +58,14 @@ function startPeerConnection(stream) {
     yourConnection.createOffer().then(offer => {
         console.log(offer);
         yourConnection.setLocalDescription(offer);
-        theirConnection.setRemoteDescription(offer);
+
+        var offer2 = JSON.parse(JSON.stringify(offer));
+        theirConnection.setRemoteDescription(offer2);
         theirConnection.createAnswer().then(offer => {
             theirConnection.setLocalDescription(offer);
-            yourConnection.setRemoteDescription(offer);
+
+            var offer2 = JSON.parse(JSON.stringify(offer));
+            yourConnection.setRemoteDescription(offer2);
             console.log("add stream", stream);
             
         })
