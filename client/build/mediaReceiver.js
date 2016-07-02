@@ -57,48 +57,50 @@
 	}
 
 	var yourVideo = document.getElementById("yours");
+	var theirVideo = document.getElementById("theirs");
 
-	var yourConnection;
+	var theirConnection;
 
-	if (hasUserMedia()) {
-	    navigator.getUserMedia({ video: true, audio: false },
-	        stream => {
-	            yourVideo.src = window.URL.createObjectURL(stream);
-	            console.log(stream);
-	            if (hasRTCPeerConnection()) {
-	                startPeerConnection(stream);
-	            } else {
-	                alert("hasRTCPeerConnection err");
-	            }
-	        },
-	        err => {
-	            console.log(err);
-	        })
+	if (hasUserMedia() && hasRTCPeerConnection()) {
+	    startPeerConnection();
+	} else {
+	    alert("err");
 	}
 
-	socket.on('receiver answer', answer => {
-	    yourConnection.setRemoteDescription(answer);
-	})
-	socket.on('receiver candidate', candidate => {
-	    yourConnection.addIceCandidate(new RTCIceCandidate(candidate));
+	socket.on('source offer', offer => {
+	    theirConnection.setRemoteDescription(offer);
+	    theirConnection.createAnswer().then(offer => {
+	        theirConnection.setLocalDescription(offer);
+	        theirConnection.createAnswer().then(answer => {
+	            theirConnection.setLocalDescription(answer);
+	            socket.emit('receiver answer', answer);
+	        })
+	    })
 	})
 
-	function startPeerConnection(stream) {
+	socket.on('source candidate', candidate => {
+	    console.log(candidate);
+	    if(candidate){
+	        theirConnection.addIceCandidate(new RTCIceCandidate(candidate));
+	    }
+	})
+
+
+
+	function startPeerConnection() {
 	    var config = {
 	        'iceServers': [{ 'url': 'stun:stun.services.mozilla.com' }, { 'url': 'stun:stunserver.org' }, { 'url': 'stun:stun.l.google.com:19302' }]
 	    };
-	    yourConnection = new RTCPeerConnection(config);
-	    yourConnection.onicecandidate = function(e) {
-	        if(e.candidate){
-	            socket.emit('source candidate', e.candidate);
+	    theirConnection = new RTCPeerConnection(config);
+
+	    theirConnection.onicecandidate = function(e) {
+	        if (e.candidate) {
+	            socket.emit('receiver candidate', e.candidate);
 	        }
 	    }
-	    yourConnection.addStream(stream);
-	    yourConnection.createOffer().then(offer => {
-	        console.log(offer);
-	        yourConnection.setLocalDescription(offer);
-	        socket.emit('source offer',offer);
-	    });
+	    theirConnection.onaddstream = function(e) {
+	        theirVideo.src = window.URL.createObjectURL(e.stream);
+	    }
 	}
 
 

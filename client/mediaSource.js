@@ -30,9 +30,12 @@ if (hasUserMedia()) {
         })
 }
 
-socket.on('connect', function() {});
-socket.on('event', function(data) {});
-socket.on('disconnect', function() {});
+socket.on('receiver answer', answer => {
+    yourConnection.setRemoteDescription(answer);
+})
+socket.on('receiver candidate', candidate => {
+    yourConnection.addIceCandidate(new RTCIceCandidate(candidate));
+})
 
 function startPeerConnection(stream) {
     var config = {
@@ -40,15 +43,14 @@ function startPeerConnection(stream) {
     };
     yourConnection = new RTCPeerConnection(config);
     yourConnection.onicecandidate = function(e) {
-        // if (e.candidate) {
-        //     theirConnection.addIceCandidate(new RTCIceCandidate(e.candidate));
-        // }
-        console.log(e);
+        if(e.candidate){
+            socket.emit('source candidate', e.candidate);
+        }
     }
     yourConnection.addStream(stream);
     yourConnection.createOffer().then(offer => {
         console.log(offer);
         yourConnection.setLocalDescription(offer);
-        socket.emit('offer',offer);
+        socket.emit('source offer',offer);
     });
 }
